@@ -109,14 +109,10 @@ class ParseHTTPClient {
 
     if (params != null) {
       final uri = Uri.parse(url).replace(queryParameters: params);
-      return _httpClient
-          .get(uri, headers: headers)
-          .then((r) => _parseResponse(r));
+      return _parseResponse(await _httpClient.get(uri, headers: headers));
     }
 
-    return _httpClient
-        .get(url, headers: headers)
-        .then((r) => _parseResponse(r));
+    return _parseResponse(await _httpClient.get(url, headers: headers));
   }
 
   Future<dynamic> delete(
@@ -130,14 +126,10 @@ class ParseHTTPClient {
 
     if (params != null) {
       var uri = Uri.parse(url).replace(queryParameters: params);
-      return _httpClient.delete(uri, headers: headers).then((r) {
-        return _parseResponse(r);
-      });
+      return _parseResponse(await _httpClient.delete(uri, headers: headers));
     }
 
-    return _httpClient
-        .delete(url, headers: headers)
-        .then((r) => _parseResponse(r));
+    return _parseResponse(await _httpClient.delete(url, headers: headers));
   }
 
   Future<dynamic> post(
@@ -151,9 +143,10 @@ class ParseHTTPClient {
     headers = await _addHeader(headers, useMasterKey: useMasterKey);
     final url = _getFullUrl(path);
 
-    return _httpClient
-        .post(url, headers: headers, body: body, encoding: encoding)
-        .then((r) => _parseResponse(r, ignoreResult: ignoreResult));
+    return _parseResponse(
+        await _httpClient.post(url,
+            headers: headers, body: body, encoding: encoding),
+        ignoreResult: ignoreResult);
   }
 
   Future<dynamic> put(
@@ -166,9 +159,8 @@ class ParseHTTPClient {
     headers = await _addHeader(headers, useMasterKey: useMasterKey);
     final url = _getFullUrl(path);
 
-    return _httpClient
-        .put(url, headers: headers, body: body, encoding: encoding)
-        .then((r) => _parseResponse(r));
+    return _parseResponse(await _httpClient.put(url,
+        headers: headers, body: body, encoding: encoding));
   }
 }
 

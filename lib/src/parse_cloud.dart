@@ -45,15 +45,17 @@ class ParseCloud extends ParseBaseObject {
 
     if (result is List) {
       return result;
-    }
-
-    if (result is Map) {
+    } else if (result is Map) {
       final error = result['error'];
       final code = result['code'];
       if (error != null) {
         throw ParseException(code: code, message: error);
       }
 
+      return result;
+    } else if (result is int) {
+      return result;
+    } else if (result is String) {
       return result;
     }
 

@@ -36,19 +36,19 @@ class ParseACL {
   final Map<String, _Permissions> _map;
 
   /// Get whether the public is allowed to read this object.
-  bool get publicReadAccess => _map['*'].read;
+  bool get publicReadAccess => _map['*']?.read ?? false;
 
   /// Get whether the public is allowed to write this object.
-  bool get publicWriteAccess => _map['*'].write;
+  bool get publicWriteAccess => _map['*']?.write ?? false;
 
   /// Set whether the public is [allowed] to read this object.
   set publicReadAccess(bool allowed) {
-    _map['*'] = _Permissions(read: allowed, write: _map['*'].write);
+    _map['*'] = _Permissions(read: allowed, write: publicWriteAccess);
   }
 
   /// Set whether the public is [allowed] to read this object.
   set publicWriteAccess(bool allowed) {
-    _map['*'] = _Permissions(read: _map['*'].read, write: allowed);
+    _map['*'] = _Permissions(read: publicReadAccess, write: allowed);
   }
 
   static void _validateUserState(ParseUser user) {
@@ -61,7 +61,7 @@ class ParseACL {
   /// `true` or a role that the user belongs to has read access.
   bool getUserReadAccess(ParseUser user) {
     _validateUserState(user);
-    return _map[user.objectId].read;
+    return _map[user.objectId]?.read ?? false;
   }
 
   /// Get whether the given [user] is *explicitly* allowed to write this object. Even if this
@@ -69,21 +69,21 @@ class ParseACL {
   /// `true` or a role that the user belongs to has write access.
   bool getUserWriteAccess(ParseUser user) {
     _validateUserState(user);
-    return _map[user.objectId].write;
+    return _map[user.objectId]?.write ?? false;
   }
 
   /// Set whether the given [user] is [allowed] to write this object.
   void setUserWriteAccess(ParseUser user, bool allowed) {
     _validateUserState(user);
     _map[user.objectId] =
-        _Permissions(read: _map[user.objectId].read, write: allowed);
+        _Permissions(read: getUserReadAccess(user), write: allowed);
   }
 
   /// Set whether the given [user] is [allowed] to read this object.
   void setUserReadAccess(ParseUser user, bool allowed) {
     _validateUserState(user);
     _map[user.objectId] =
-        _Permissions(read: allowed, write: _map[user.objectId].write);
+        _Permissions(read: allowed, write: getUserWriteAccess(user));
   }
 
   static void _validateRoleState(ParseRole role) {
@@ -97,7 +97,7 @@ class ParseACL {
   /// use this method.
   bool getRoleReadAccess(ParseRole role) {
     _validateRoleState(role);
-    return _map['role:${role.name}'].read;
+    return _map['role:${role.name}']?.read ?? false;
   }
 
   /// Get whether users belonging to the given role are allowed to write this object. Even if this
@@ -106,7 +106,7 @@ class ParseACL {
   /// order to use this method.
   bool getRoleWriteAccess(ParseRole role) {
     _validateRoleState(role);
-    return _map['role:${role.name}'].write;
+    return _map['role:${role.name}']?.write ?? false;
   }
 
   /// Set whether users belonging to the [role] with the given roleName are [allowed] to read this
@@ -114,7 +114,7 @@ class ParseACL {
   void setRoleReadAccess(ParseRole role, bool allowed) {
     _validateRoleState(role);
     _map['role:${role.name}'] =
-        _Permissions(write: _map['role:${role.name}'].read, read: allowed);
+        _Permissions(write: getRoleReadAccess(role), read: allowed);
   }
 
   /// Set whether users belonging to the [role] with the given roleName are [allowed] to write this
@@ -122,7 +122,7 @@ class ParseACL {
   void setRoleWriteAccess(ParseRole role, bool allowed) {
     _validateRoleState(role);
     _map['role:${role.name}'] =
-        _Permissions(write: allowed, read: _map['role:${role.name}'].write);
+        _Permissions(write: allowed, read: getRoleWriteAccess(role));
   }
 
   /// Return this ACL into Map format
