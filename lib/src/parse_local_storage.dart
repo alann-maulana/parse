@@ -1,6 +1,8 @@
-import 'package:sembast/sembast.dart';
+import 'dart:async';
+import 'dart:convert';
 
-import '../flutter_parse.dart';
+import 'package:meta/meta.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final ParseLocalStorage parseLocalStorage = ParseLocalStorage._internal();
 
@@ -9,7 +11,7 @@ class ParseLocalStorage {
 
   ParseLocalStorage._internal() : _cache = {};
 
-  Future<LocalStorage> get(String key) async {
+  Future<LocalStorage?> get(String key) async {
     if (!_cache.containsKey(key)) {
       final instance = LocalStorage._internal(key);
       await instance._init();
@@ -18,27 +20,35 @@ class ParseLocalStorage {
 
     return _cache[key];
   }
+
+  @visibleForTesting
+  Future<void> clear() async {
+    _cache.forEach((key, cache) async {
+      await cache.delete();
+    });
+    _cache.clear();
+  }
 }
 
 class LocalStorage {
-  final StoreRef _store = StoreRef.main();
-  final String _filename;
+  final String _keyName;
   final Map<String, dynamic> _data = {};
-  Database _db;
 
-  LocalStorage._internal(this._filename);
+  LocalStorage._internal(this._keyName);
 
   _init() async {
-    _db = await parse.configuration.databaseFactory
-        .openDatabase('flutter_parse.db');
-
-    final map = await _store.record(_filename).get(_db) as Map;
-    if (map is Map) {
-      _data.addAll(map);
-    }
+    final _db = await SharedPreferences.getInstance();
+    final source = _db.getString(_keyName);
+    try {
+      final map = json.decode(source!);
+      if (map is Map<String, dynamic>) {
+        _data.addAll(map);
+      }
+    } catch (_) {}
+    await _db.setString(_keyName, json.encode(_data));
   }
 
-  Future<void> setData(Map<String, dynamic> values) async {
+  Future<bool> setData(Map<String, dynamic> values) async {
     _data
       ..clear()
       ..addAll(values);
@@ -46,17 +56,19 @@ class LocalStorage {
     return _flush();
   }
 
-  Future<void> setItem(String key, value) async {
+  Future<bool> setItem(String key, value) async {
     _data[key] = value;
 
     return _flush();
   }
 
-  Future<void> delete() async {
-    await _store.record(_filename).delete(_db);
+  Future<bool> delete() async {
+    _data.clear();
+
+    return _flush();
   }
 
-  deleteItem(String key) async {
+  Future<bool> deleteItem(String key) async {
     _data.remove(key);
 
     return _flush();
@@ -72,7 +84,8 @@ class LocalStorage {
 
   bool get isEmpty => _data.isEmpty;
 
-  Future<void> _flush() async {
-    await _store.record(_filename).put(_db, _data);
+  Future<bool> _flush() async {
+    final _db = await SharedPreferences.getInstance();
+    return await _db.setString(_keyName, json.encode(_data));
   }
 }

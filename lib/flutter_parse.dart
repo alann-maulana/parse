@@ -6,21 +6,27 @@ library flutter_parse;
 
 import 'package:http/http.dart';
 import 'package:meta/meta.dart';
-import 'package:sembast/sembast.dart';
-import 'package:sembast/sembast_memory.dart';
+import 'package:platform/platform.dart';
+
+import 'src/parse_http_client.dart' as client;
+import 'src/platform/platform.dart';
 
 export 'src/parse_acl.dart';
+export 'src/parse_cloud.dart';
 export 'src/parse_config.dart';
 export 'src/parse_exception.dart';
 export 'src/parse_file.dart';
 export 'src/parse_geo_point.dart';
+export 'src/parse_live_query.dart';
 export 'src/parse_object.dart';
 export 'src/parse_query.dart';
 export 'src/parse_role.dart';
+export 'src/parse_schema.dart';
 export 'src/parse_session.dart';
 export 'src/parse_user.dart';
 
-const String kParseSdkVersion = "0.2.3";
+/// Displaying current Parse SDK version
+const String kParseSdkVersion = "0.2.4";
 
 final Parse parse = Parse._internal();
 
@@ -50,42 +56,89 @@ class Parse {
     return parse..initialize(configuration);
   }
 
+  /// Setter method for [ParseConfiguration] using [parse] global instance
   void initialize(ParseConfiguration configuration) {
     _configuration = configuration;
   }
 
-  ParseConfiguration _configuration;
+  ParseConfiguration? _configuration;
 
-  ParseConfiguration get configuration => _configuration;
+  ParseConfiguration? get configuration => _configuration;
 
-  String get clientKey => configuration.clientKey;
+  /// Return [Parse] client key
+  String? get clientKey => configuration?.clientKey;
 
-  String get applicationId => configuration.applicationId;
+  /// Return [Parse] master key
+  String? get masterKey => configuration?.masterKey;
 
-  String get server => configuration.uri.toString();
+  /// Return [Parse] application ID
+  String? get applicationId => configuration?.applicationId;
 
-  bool get enableLogging => configuration.enableLogging;
+  /// Return [Parse] server path
+  String? get server => configuration?.uri.toString();
 
+  /// Return [Parse] logging status
+  bool get enableLogging => configuration?.enableLogging ?? false;
+
+  /// Return [Parse] initialized status
   bool get initialized => configuration != null;
+
+  Platform? _platform;
+
+  /// Convert [BaseRequest] object into friendly formatted CURL command into console log
+  void logToCURL(BaseRequest request) => client.logToCURL(request);
+
+  @visibleForTesting
+  set platform(Platform platform) {
+    _platform = platform;
+  }
+
+  Platform get platform => _platform ?? kDefaultPlatform;
 }
 
+/// The [ParseConfiguration] class contains variable that handle global
+/// configuration for the Parse library.
 class ParseConfiguration {
   ParseConfiguration({
-    @required String server,
-    @required this.applicationId,
+    required String server,
+    required this.applicationId,
+    this.liveQueryServer,
     this.clientKey,
-    this.enableLogging,
+    this.masterKey,
+    this.enableLogging = false,
     this.httpClient,
-    DatabaseFactory databaseFactory,
-  })  : uri = Uri.parse((server.endsWith("/")
+  })  : assert(
+          server.startsWith('https://') || server.startsWith('http://'),
+          'Invalid parse server',
+        ),
+        assert(
+          liveQueryServer == null ||
+              liveQueryServer.startsWith('wss://') ||
+              liveQueryServer.startsWith('ws://'),
+          'Invalid parse live query server',
+        ),
+        uri = Uri.parse((server.endsWith("/")
             ? server.substring(0, server.length - 1)
-            : server)),
-        databaseFactory = databaseFactoryMemory;
+            : server));
 
+  /// The [Uri] object parsed from `server`
   final Uri uri;
+
+  /// The live query server
+  final String? liveQueryServer;
+
+  /// The application ID of Parse Server
   final String applicationId;
-  final String clientKey;
+
+  /// The client key of Parse Server
+  final String? clientKey;
+
+  /// The master key of Parse Server
+  final String? masterKey;
+
+  /// Enable show every request sent to Parse Server into CURL format
   final bool enableLogging;
-  final BaseClient httpClient;
-  final DatabaseFactory databaseFactory;
+
+  /// Add your custom [BaseClient] class to intercept Parse request here.
+  final BaseClient? httpClient;
 }

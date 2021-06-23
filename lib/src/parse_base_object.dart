@@ -1,5 +1,5 @@
 abstract class ParseBaseObject {
-  external dynamic get asMap;
+  dynamic get asMap;
 
-  external String get path;
+  String get path;
 }

@@ -1,9 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:meta/meta.dart';
-
 import '../flutter_parse.dart';
-
 import 'parse_encoder.dart';
 import 'parse_exception.dart';
 import 'parse_geo_point.dart';
@@ -13,28 +11,41 @@ import 'parse_user.dart';
 
 class ParseQuery<T extends ParseObject> {
   final String className;
-  final List<String> _includes = List();
-  final List<String> _order = List();
+  final List<String> _includes = [];
+  final List<String> _order = [];
   final Map<String, dynamic> _where = Map();
-  List<String> _selectedKeys;
+  List<String>? _selectedKeys;
   int _limit = -1;
   int _skip = 0;
   bool _countEnabled = false;
 
-  ParseQuery({@required this.className});
+  ParseQuery({required this.className});
+
+  ParseQuery get copy {
+    final newQuery = ParseQuery(className: className);
+    newQuery._includes.addAll(_includes);
+    newQuery._order.addAll(_order);
+    newQuery._where.addAll(_where);
+    newQuery._selectedKeys = _selectedKeys;
+    newQuery._limit = _limit;
+    newQuery._skip = _skip;
+    newQuery._countEnabled = _countEnabled;
+
+    return newQuery;
+  }
 
   void _addCondition(String key, String condition, dynamic value) {
-    Map<String, dynamic> whereValue;
+    Map<String, dynamic>? whereValue;
 
     // Check if we already have some of a condition
     if (_where.containsKey(key)) {
       dynamic existingValue = _where[key];
-      if (existingValue is Map) {
+      if (existingValue is Map<String, dynamic>) {
         whereValue = existingValue;
       }
     }
 
-    whereValue ??= Map();
+    whereValue ??= {};
 
     whereValue.putIfAbsent(condition, () => value);
 
@@ -146,13 +157,20 @@ class ParseQuery<T extends ParseObject> {
     _addCondition(key, "\$nearSphere", point);
   }
 
+  void whereWithinKilometers(String key, ParseGeoPoint point, num maxDistance) {
+    Map<String, dynamic> condition = Map();
+    condition["\$nearSphere"] = point;
+    condition["\$maxDistanceInKilometers"] = maxDistance;
+    _where.putIfAbsent(key, () => parseEncoder.encode(condition));
+  }
+
   void maxDistance(String key, double maxDistance) {
     _addCondition(key, "\$maxDistance", maxDistance);
   }
 
   void whereWithin(
       String key, ParseGeoPoint southwest, ParseGeoPoint northeast) {
-    List<dynamic> array = List();
+    List<dynamic> array = [];
     array.add(southwest);
     array.add(northeast);
     Map<String, List<dynamic>> dictionary = Map();
@@ -207,13 +225,13 @@ class ParseQuery<T extends ParseObject> {
 
   void selectKeys(List<String> keys) {
     if (_selectedKeys == null) {
-      _selectedKeys = List();
+      _selectedKeys = [];
     }
 
-    _selectedKeys.addAll(keys);
+    _selectedKeys!.addAll(keys);
   }
 
-  List<String> get selectedKeys => _selectedKeys;
+  List<String>? get selectedKeys => _selectedKeys;
 
   void setLimit(int limit) {
     _limit = limit;
@@ -246,6 +264,7 @@ class ParseQuery<T extends ParseObject> {
     }
     if (_countEnabled) {
       params.putIfAbsent("count", () => 1);
+      params.putIfAbsent("limit", () => 0);
     } else {
       if (_skip > 0) {
         params.putIfAbsent("skip", () => _skip);
@@ -258,7 +277,7 @@ class ParseQuery<T extends ParseObject> {
       params.putIfAbsent("include", () => _includes.join(','));
     }
     if (_selectedKeys != null) {
-      params.putIfAbsent("fields", () => _selectedKeys.join(','));
+      params.putIfAbsent("keys", () => _selectedKeys!.join(','));
     }
 
     return params;
@@ -277,17 +296,24 @@ class ParseQuery<T extends ParseObject> {
     return ParseQuery(className: className)..whereEqualTo("\$or", clauseOr);
   }
 
-  Future<List<dynamic>> findAsync() async {
-    dynamic result = await _find();
+  Future<List<dynamic>> findAsync({bool useMasterKey = false}) async {
+    dynamic result = await _find(useMasterKey: useMasterKey);
     if (result.containsKey("results")) {
       List<dynamic> results = result["results"];
-      List<dynamic> objects = List();
+      List<dynamic> objects = [];
       results.forEach((json) {
         String objectId = json["objectId"];
-        if (className == '_User') {
+        if (className == '_Session') {
+          ParseSession session = ParseSession.fromJson(json: json);
+          objects.add(session);
+        } else if (className == '_Role') {
+          ParseRole role = ParseRole.fromMap(json);
+          objects.add(role);
+        } else if (className == '_User') {
           ParseUser user = ParseUser.fromJson(json: json);
           objects.add(user);
         } else {
+          // ignore: invalid_use_of_visible_for_testing_member
           ParseObject object = ParseObject.fromJson(
             className: className,
             objectId: objectId,
@@ -302,13 +328,13 @@ class ParseQuery<T extends ParseObject> {
     return [];
   }
 
-  Future<dynamic> _find() {
+  Future<dynamic> _find({bool useMasterKey = false}) {
     _countEnabled = false;
-    return _query();
+    return _query(useMasterKey: useMasterKey);
   }
 
-  Future<int> countAsync() async {
-    final result = await _count();
+  Future<int> countAsync({bool useMasterKey = false}) async {
+    final result = await _count(useMasterKey: useMasterKey);
     if (result.containsKey("count")) {
       return result["count"];
     }
@@ -316,22 +342,24 @@ class ParseQuery<T extends ParseObject> {
     return 0;
   }
 
-  Future<dynamic> _count() {
+  Future<dynamic> _count({bool useMasterKey = false}) {
     _countEnabled = true;
-    return _query();
+    return _query(useMasterKey: useMasterKey);
   }
 
-  Future<dynamic> _query() {
+  Future<dynamic> _query({bool useMasterKey = false}) {
+    assert(parse.configuration != null);
     Map<String, dynamic> params = toJsonParams();
     params.putIfAbsent("_method", () => "GET");
 
     dynamic body = json.encode(params);
     final headers = {
-      'content-type': 'application/json; charset=utf-8',
+      'Content-Type': 'application/json; charset=utf-8',
     };
 
     return parseHTTPClient.post(
-      '${parse.configuration.uri.path}/classes/$className',
+      '${parse.configuration!.uri.path}/classes/$className',
+      useMasterKey: useMasterKey,
       body: body,
       headers: headers,
     );

@@ -6,7 +6,7 @@ class ParseDateFormat {
 
   /// Deserialize an ISO-8601 full-precision extended format representation
   /// of date string into [DateTime].
-  DateTime parse(String strDate) => DateTime.tryParse(strDate);
+  DateTime? parse(String strDate) => DateTime.tryParse(strDate);
 
   /// Serialize [DateTime] into an ISO-8601 full-precision
   /// extended format representation.

@@ -1,5 +1,5 @@
 import 'package:flutter_parse/flutter_parse.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ParseObject variable check after fetch', () {
@@ -79,14 +79,14 @@ void main() {
 
     test('object must be equal', () {
       expect(fetch.get('object') is Map, isTrue);
-      expect(fetch.getMap('object').containsKey('number'), isTrue);
-      expect(fetch.getMap('object')['number'] == 12345, isTrue);
+      expect(fetch.getMap('object')?.containsKey('number'), isTrue);
+      expect(fetch.getMap('object')?['number'] == 12345, isTrue);
     });
 
     test('array must be equal', () {
       expect(fetch.get('array') is List, isTrue);
-      expect(fetch.getList<int>('array').length == 3, isTrue);
-      expect(fetch.getList<int>('array')[1] == 123, isFalse);
+      expect(fetch.getList<int>('array')?.length == 3, isTrue);
+      expect(fetch.getList<int>('array')?[1] == 123, isFalse);
     });
 
     test('file must be equal', () {
@@ -101,11 +101,11 @@ void main() {
               }),
           isTrue);
       expect(
-          fetch.getParseFile('picture').name ==
+          fetch.getParseFile('picture')?.name ==
               '15cdeaaefdafa3f43099f4a2a72d25de_wilis.jpg',
           isTrue);
       expect(
-          fetch.getParseFile('picture').url ==
+          fetch.getParseFile('picture')?.url ==
               'https://parsefiles.back4app.com/YtoxICpUQVRdQT96DUAdkGuk85unFzfuOUomHALP/15cdeaaefdafa3f43099f4a2a72d25de_wilis.jpg',
           isTrue);
     });

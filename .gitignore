@@ -4,6 +4,12 @@
 # Remove the following pattern if you wish to check in your lock file
 pubspec.lock
 
+### macOS ###
+# General
+.DS_Store
+.AppleDouble
+.LSOverrideÏ
+
 # Conventional directory for build outputs
 build/
 

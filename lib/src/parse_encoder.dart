@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter_parse/flutter_parse.dart';
+
 import 'parse_acl.dart';
 import 'parse_date_format.dart';
 import 'parse_file.dart';
@@ -70,6 +72,10 @@ class ParseEncoder {
 
     if (value is ParseACL) {
       return value.map;
+    }
+
+    if (value is ParseRole) {
+      return value.asMap;
     }
 
     return value;

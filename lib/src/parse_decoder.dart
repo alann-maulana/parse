@@ -1,9 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter_parse/flutter_parse.dart';
+
 import 'parse_date_format.dart';
 import 'parse_file.dart';
 import 'parse_geo_point.dart';
 import 'parse_object.dart';
+import 'parse_session.dart';
 import 'parse_user.dart';
 
 final ParseDecoder parseDecoder = ParseDecoder._internal();
@@ -13,7 +16,7 @@ class ParseDecoder {
   ParseDecoder._internal();
 
   List<dynamic> _convertJSONArrayToList(List<dynamic> array) {
-    List<dynamic> list = List();
+    List<dynamic> list = [];
     array.forEach((value) {
       list.add(decode(value));
     });
@@ -50,11 +53,11 @@ class ParseDecoder {
       return value;
     }
 
-    if (!(value is Map)) {
+    if (!(value is Map<String, dynamic>)) {
       return value;
     }
 
-    Map map = value;
+    Map<String, dynamic> map = value;
     if (!map.containsKey("__type")) {
       return _convertJSONObjectToMap(map);
     }
@@ -69,19 +72,29 @@ class ParseDecoder {
       case "Pointer":
         String objectId = map["objectId"];
         String className = map["className"];
+        if (className == '_User') {
+          return ParseUser(objectId: objectId);
+        } else if (className == '_Role') {
+          return ParseRole.fromMap(map);
+        }
         return ParseObject(className: className, objectId: objectId);
       case "Object":
         String objectId = map["objectId"];
         String className = map["className"];
+        if (className == '_Session') {
+          return ParseSession.fromJson(json: map);
+        }
         if (className == '_User') {
           return ParseUser.fromJson(json: map);
         }
+        // ignore: invalid_use_of_visible_for_testing_member
         return ParseObject.fromJson(
           className: className,
           objectId: objectId,
           json: map,
         );
       case "File":
+        // ignore: invalid_use_of_visible_for_testing_member
         return ParseFile.fromJson(map);
       case "GeoPoint":
         num latitude = map["latitude"] ?? 0.0;

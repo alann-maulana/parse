@@ -1,3 +1,6 @@
+## 0.2.4    
+* Moving from personal to organization account
+
 ## 0.2.3    
 * Add parameter for `databaseFactory` for better support of web
 
